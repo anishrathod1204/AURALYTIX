@@ -1,4 +1,4 @@
-const API_ORIGIN = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+const API_ORIGIN = (import.meta.env.DEV ? import.meta.env.VITE_API_URL || "" : "").replace(/\/$/, "");
 const endpoint = (path) => API_ORIGIN ? API_ORIGIN + path : "/api" + path;
 
 async function readResponse(response, fallback) {

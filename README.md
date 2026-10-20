@@ -27,6 +27,12 @@ The launcher prepares missing dependencies, starts the backend, checks its healt
 
 In the search field, **Enter** submits the question and **Shift+Enter** adds a line break.
 
+## Vercel deployment
+
+The root vercel.json defines two services: the FastAPI API at /api/* and the Vite frontend at /. In Vercel project settings, set the project framework to Services. The frontend rewrites preserve React Router deep links, while /assets/* and /favicon.svg are served from the Vite build.
+
+Run vercel dev -L from the repository root to exercise the service routing locally. Set backend provider secrets in the Vercel project environment; do not commit .env files. Complete the public-launch requirements below before promoting a deployment.
+
 ## What it does
 
 - Searches the full question and related topic terms, then ranks retrieved pages against the complete request.
