@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="520" viewBox="0 0 1440 520" role="img" aria-labelledby="title desc">
+  <title id="title">AURALYTIX research desk</title>
+  <desc id="desc">Search the web, inspect public GitHub repositories, and get source-linked research briefs with related videos when available.</desc>
+  <defs>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0V36" fill="none" stroke="#e4dfd4" stroke-width="1"/>
+      <circle cx="0" cy="0" r="1.4" fill="#c9c0b0"/>
+    </pattern>
+  </defs>
+  <rect width="1440" height="520" fill="#f3f1eb"/>
+  <rect width="1440" height="520" fill="url(#grid)" opacity=".43"/>
+  <rect x="34" y="34" width="1372" height="452" rx="2" fill="#fffefa" stroke="#d8d3c9"/>
+  <path d="M34 132H1406" stroke="#d8d3c9"/>
+  <rect x="71" y="72" width="46" height="46" fill="#19211c"/>
+  <path d="M82 105V83h6l7 12 7-12h6v22h-6V93l-7 11-7-11v12z" fill="#e2b47b"/>
+  <text x="132" y="94" fill="#202721" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="3">AURALYTIX</text>
+  <text x="132" y="113" fill="#747d75" font-family="Arial, Helvetica, sans-serif" font-size="10" letter-spacing="2">RESEARCH DESK / LOCAL FIRST</text>
+  <text x="74" y="218" fill="#885a2d" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" letter-spacing="2.6">WEB RETRIEVAL  /  EVIDENCE  /  BRIEF</text>
+  <text x="70" y="294" fill="#202721" font-family="Georgia, 'Times New Roman', serif" font-size="66" letter-spacing="-2">A question,</text>
+  <text x="70" y="367" fill="#202721" font-family="Georgia, 'Times New Roman', serif" font-size="66" letter-spacing="-2">followed to its sources.</text>
+  <text x="74" y="413" fill="#545d55" font-family="Arial, Helvetica, sans-serif" font-size="16">Search the web. Review public code. Read the evidence behind an answer.</text>
+  <path d="M1002 194V423" stroke="#b17a40"/>
+  <text x="1030" y="211" fill="#747d75" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="700" letter-spacing="2">THE REQUEST PATH</text>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="1030" y="264" fill="#885a2d" font-size="13">01</text><text x="1070" y="264" fill="#202721" font-size="16">Question</text><text x="1325" y="264" fill="#747d75" font-size="10" text-anchor="end">TEXT / VOICE</text>
+    <path d="M1030 280H1360" stroke="#e8e4dc"/>
+    <text x="1030" y="322" fill="#885a2d" font-size="13">02</text><text x="1070" y="322" fill="#202721" font-size="16">Retrieval</text><text x="1325" y="322" fill="#747d75" font-size="10" text-anchor="end">WEB / LIVE DATA</text>
+    <path d="M1030 338H1360" stroke="#e8e4dc"/>
+    <text x="1030" y="380" fill="#885a2d" font-size="13">03</text><text x="1070" y="380" fill="#202721" font-size="16">Research brief</text><text x="1325" y="380" fill="#747d75" font-size="10" text-anchor="end">ANSWER / SOURCES</text>
+    <path d="M1030 396H1360" stroke="#e8e4dc"/>
+  </g>
+  <text x="74" y="459" fill="#747d75" font-family="Arial, Helvetica, sans-serif" font-size="10" letter-spacing="1.8">SOURCE-LINKED ANSWERS · RELATED VIDEOS WHEN AVAILABLE · PUBLIC REPOSITORY REVIEW</text>
+</svg>

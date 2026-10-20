@@ -1,0 +1,16 @@
+@echo off
+cd /d "%~dp0"
+where node >nul 2>nul
+if errorlevel 1 (
+  echo Node.js 20 or newer is required.
+  pause
+  exit /b 1
+)
+node -e "process.exit(Number(process.versions.node.split('.')[0]) >= 20 ? 0 : 1)"
+if errorlevel 1 (
+  echo Node.js 20 or newer is required.
+  pause
+  exit /b 1
+)
+call npm run dev
+if errorlevel 1 pause

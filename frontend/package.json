@@ -1,0 +1,39 @@
+{
+  "name": "auralytix-ai-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AURALYTIX AI - Intelligent Voice-Driven Multimodal AI Operating System Dashboard",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.18.4",
+    "axios": "^1.7.7",
+    "lucide-react": "^0.454.0",
+    "react-leaflet": "^4.2.1",
+    "leaflet": "^1.9.4",
+    "react-plotly.js": "^2.6.0",
+    "plotly.js-dist-min": "^2.35.1",
+    "chart.js": "^4.4.4",
+    "react-chartjs-2": "^5.2.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.4.3",
+    "eslint": "^9.15.0",
+    "eslint-plugin-react": "^7.37.3",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

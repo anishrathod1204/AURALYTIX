@@ -1,0 +1,90 @@
+AURALYTIX AI - Local Setup
+=========================
+
+Project location
+-----------------
+The project now lives at D:\CODE. In PowerShell, run Set-Location D:\CODE before
+using npm or backend commands. The old C:\Users\ASUS\Downloads\CODE folder is
+only an empty workspace remnant.
+
+1. Requirements
+---------------
+  - Python 3.10 or newer
+  - Node.js 20 or newer and npm
+  - Internet access for live web, news, weather, and video retrieval
+  - A microphone for voice search (optional)
+
+2. Configure the backend
+------------------------
+  Open PowerShell in the project root (D:\CODE). Use this root-level virtual environment,
+  not a separate venv inside backend:
+
+    if (!(Test-Path .\venv\Scripts\python.exe)) { python -m venv venv }
+    .\venv\Scripts\python.exe -m pip install -r requirements.txt
+
+  Do not run `python -m venv venv` while that environment is active. If you need to
+  recreate it, first run `deactivate` and close other terminals or processes using it.
+
+  If backend\.env does not already exist, copy backend\.env.example to backend\.env.
+  Keep an existing backend\.env if it already contains your API keys. The app reads
+  this file when started from either the project folder or the backend folder.
+
+  Local speech recognition uses faster-whisper when installed. Its model is cached in
+  backend\models\whisper, so audio can be transcribed without sending it to the API.
+  Put provider keys only in backend\.env. The local project is configured for
+  OpenRouter's free-only route: LLM_PROVIDER=openrouter,
+  OPENROUTER_MODEL=openrouter/free, and your OPENROUTER_API_KEY. The app sends the complete
+  question and retrieved source excerpts to the model for one coherent, cited answer.
+  The free route does not fall back to paid models, though free-model availability and
+  request limits apply. ENABLE_PAID_APIS=false keeps paid search, news, weather, and video
+  integrations off even if their keys are present. Speech is configured for local Whisper
+  to avoid paid transcription.
+
+3. Start the full app
+---------------------
+  For normal use, double-click Start AURALYTIX.bat in D:\CODE. Or run one command
+  from the project root:
+
+    npm run dev
+
+  The launcher checks local dependencies, installs missing requirements once, starts
+  the backend, waits for its health endpoint, then starts Vite and opens the browser.
+  Keep that terminal open while using the app. Press Ctrl+C to stop both services.
+  The frontend is at http://localhost:3000, backend health is at
+  http://localhost:8010/health, and the API reference is at http://localhost:8010/docs.
+
+  To prepare the project manually on first use, run npm install and
+  .\venv\Scripts\python.exe -m pip install -r requirements.txt from D:\CODE.
+
+5. Use AURALYTIX
+----------------
+  - Every question searches the web and retrieves related YouTube video previews.
+  - News, weather, charts, and maps are added when the question calls for them.
+  - Answers include source links when providers return them.
+  - Use the microphone for voice transcription and the same research flow.
+    If backend transcription is unavailable, supported browsers offer a speech-service
+    fallback with a notice before the user opts in.
+  - Follow-up questions in the same browser tab use recent session context.
+  - Clear session context removes that tab's stored conversation immediately.
+
+6. Provider behavior
+--------------------
+  Paid providers are used only when ENABLE_PAID_APIS=true and their keys are configured.
+  Otherwise general web search uses DuckDuckGo and Bing RSS across the full question and
+  focused question clauses, then Wikipedia reference search. News uses Google News RSS,
+  Bing News RSS, GDELT, and DuckDuckGo. Weather uses Open-Meteo, and video lookup uses
+  public YouTube search results. Including a public GitHub repository URL triggers a
+  read-only review of its GitHub metadata, README, and selected small source files. Code is
+  never executed. If the reasoning provider is offline, the app still displays
+  retrieved results and a short source-based response.
+
+7. Data and launch notes
+------------------------
+  Conversation text is stored in backend/data/auralytix.sqlite3 and removed after 24 hours.
+  Uploaded audio is deleted after transcription. Do not place backend\.env in ZIP files
+  or upload it to source hosting. Rotate any API key that has been shared outside a private
+  environment.
+
+  Do not publicly launch until the custom domain is connected, the favicon is present,
+  the hosting badge is removed, and the privacy policy and terms are reviewed and complete.
+  See DESIGN_AND_LAUNCH_GATES.md.

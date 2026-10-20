@@ -1,0 +1,19 @@
+{
+  "name": "auralytix-ai",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "node dev.mjs",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": ".\\venv\\Scripts\\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8010",
+    "start": "node dev.mjs",
+    "build": "npm run build --workspace=frontend",
+    "preview": "npm run preview --workspace=frontend",
+    "lint": "npm run lint --workspace=frontend"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

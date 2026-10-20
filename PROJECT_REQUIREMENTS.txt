@@ -1,0 +1,61 @@
+AURALYTIX AI - Functional Requirements
+=====================================
+
+1. PRODUCT
+----------
+AURALYTIX is a voice and text research assistant. It retrieves current web results,
+news, weather, and videos, prepares a sourced answer, and renders relevant data in an
+interactive React dashboard.
+
+2. USER FEATURES
+---------------
+FR-01: Accept text questions through the research desk.
+FR-02: Accept voice input, transcribe it, and use the same research flow.
+FR-03: Route every question through general web search and add specialist retrieval
+       for weather, news, and YouTube questions.
+FR-04: Synthesize answers through the configured OpenAI, Groq, or local Ollama provider.
+       If synthesis is unavailable, return retrieved sources and a source-based response.
+FR-05: Show real result links, provider names, article dates, current weather, forecast
+       chart data, weather locations, and YouTube videos when the APIs return them.
+FR-06: Display charts only when a provider returns numeric time-series data and display
+       maps only when a provider returns valid coordinates.
+FR-07: Keep recent question and answer context per browser session for follow-up questions.
+FR-08: Let a user clear that session context from the interface.
+FR-09: Provide backend health status without disclosing API credentials.
+FR-10: Provide privacy and terms routes, marked as drafts until operator details are
+       confirmed for public launch.
+
+3. INTEGRATIONS
+---------------
+LLM: OpenAI, Groq-compatible Chat Completions, or Ollama chat endpoint.
+Speech: OpenAI transcription API, optional local faster-whisper fallback, and an explicit
+        browser speech-service fallback after backend transcription errors.
+Search: Serper when configured; otherwise DuckDuckGo public search results.
+News: NewsAPI when configured; otherwise GDELT article search.
+Weather: OpenWeatherMap when configured; otherwise Open-Meteo geocoding and forecast.
+Video: YouTube Data API when configured; otherwise public search results for YouTube.
+Storage: SQLite stores session questions and answers for a maximum of 24 hours. The
+         user can delete one browser session immediately. Audio and sources are not stored.
+
+4. TECHNOLOGY
+-------------
+Backend: Python 3.10+, FastAPI, Pydantic, SQLite, requests.
+Frontend: React 18, Vite, Tailwind CSS, React Router, Chart.js, Leaflet.
+The request router is explicit Python code so core search does not depend on optional
+agent framework setup. All external credentials are read from backend/.env.
+
+5. DATA HANDLING
+----------------
+- API keys remain on the backend and are never included in health responses.
+- Text prompts and transcribed speech may be sent to the configured reasoning provider.
+- Voice audio may be sent to OpenAI for transcription when that API is configured.
+- If the user selects the browser speech fallback, their browser vendor may process audio.
+- Search, weather, news, and video queries go to the selected provider or public fallback.
+- Temporary voice files are removed after each transcription request.
+- Session messages are purged after 24 hours and can be deleted sooner from the UI.
+
+6. PUBLIC LAUNCH GATES
+----------------------
+Do not launch until the custom domain is verified, the favicon is present, any platform
+badge is removed, and reviewed Privacy Policy and Terms and Conditions pages include the
+operator identity, contact, jurisdiction, real provider list, hosting, and retention details.

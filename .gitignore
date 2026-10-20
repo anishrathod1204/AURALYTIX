@@ -1,0 +1,32 @@
+# Local secrets and runtime files
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local conversation database
+backend/data/
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+backend/models/
+
+# Local editor and runtime state
+.kilo/
+.vscode/
+.pytest_cache/
+.ruff_cache/
+*.log
+
+# Vite-generated local cache
+frontend/.vite/
