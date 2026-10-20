@@ -3,6 +3,7 @@
 import os
 import sqlite3
 import threading
+import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -14,7 +15,15 @@ _retention_seconds = 24 * 60 * 60
 
 def _database_path() -> Path:
     configured = os.getenv("AURALYTIX_DB_PATH", "").strip()
-    path = Path(configured).expanduser() if configured else Path(__file__).resolve().parent / "data" / "auralytix.sqlite3"
+    if configured:
+        path = Path(configured).expanduser()
+    elif os.getenv("VERCEL") == "1":
+        # Vercel's function bundle is read-only. /tmp is writable for the life
+        # of an instance, so use it for best-effort session context when no
+        # external database has been configured.
+        path = Path(tempfile.gettempdir()) / "auralytix.sqlite3"
+    else:
+        path = Path(__file__).resolve().parent / "data" / "auralytix.sqlite3"
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
