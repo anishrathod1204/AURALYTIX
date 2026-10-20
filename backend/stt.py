@@ -1,6 +1,7 @@
 """Speech-to-text through the configured OpenAI transcription API or local Whisper."""
 
 import os
+import tempfile
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -41,7 +42,12 @@ def _local_transcription(audio_path: str) -> Optional[str]:
 def _local_whisper_model():
     from faster_whisper import WhisperModel
 
-    model_dir = Path(__file__).resolve().parent / "models" / "whisper"
+    if os.getenv("VERCEL") == "1":
+        # Function bundles are read-only; downloaded model files belong in the
+        # writable temporary filesystem on Vercel.
+        model_dir = Path(tempfile.gettempdir()) / "auralytix-models" / "whisper"
+    else:
+        model_dir = Path(__file__).resolve().parent / "models" / "whisper"
     model_dir.mkdir(parents=True, exist_ok=True)
     return WhisperModel(
         os.getenv("WHISPER_MODEL_SIZE", "base"),
