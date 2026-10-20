@@ -75,6 +75,14 @@ async def lifespan(_app):
 
 
 app = FastAPI(title="AURALYTIX Research API", version="2.0.0", lifespan=lifespan)
+
+@app.middleware("http")
+async def mount_vercel_api_prefix(request: Request, call_next):
+    path = request.scope.get("path", "")
+    if path == "/api" or path.startswith("/api/"):
+        request.scope["root_path"] = "/api"
+    return await call_next(request)
+
 configured_origins = os.getenv("FRONTEND_URL", "http://localhost:3000,http://127.0.0.1:3000")
 allowed_origins = [origin.strip().rstrip("/") for origin in configured_origins.split(",") if origin.strip()]
 app.add_middleware(
