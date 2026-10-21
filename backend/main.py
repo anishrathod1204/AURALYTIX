@@ -168,7 +168,9 @@ async def handle_query(req: QueryRequest):
             req.query,
             session_id=session_id,
             modality=req.modality or "text",
-            defer_synthesis=True,
+            # Return a complete answer in this invocation. In-memory background
+            # tasks are not reliable across serverless function requests.
+            defer_synthesis=False,
         )
         return QueryResponse(**result)
     except HTTPException:

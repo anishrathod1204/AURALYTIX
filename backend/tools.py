@@ -4,6 +4,8 @@ import json
 import importlib.util
 import os
 import re
+import contextvars
+import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
 from datetime import datetime, timezone
 from html import unescape
@@ -15,6 +17,46 @@ import xml.etree.ElementTree as ET
 
 import requests
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger("auralytix.providers")
+_active_provider_diagnostics: contextvars.ContextVar[Optional[Dict[str, str]]] = contextvars.ContextVar(
+    "auralytix_provider_diagnostics", default=None
+)
+
+
+def set_provider_diagnostics(diagnostics: Dict[str, str]):
+    return _active_provider_diagnostics.set(diagnostics)
+
+
+def reset_provider_diagnostics(token) -> None:
+    _active_provider_diagnostics.reset(token)
+
+
+def _record_provider(name: str, status: str) -> None:
+    diagnostics = _active_provider_diagnostics.get()
+    if diagnostics is not None:
+        diagnostics[name] = status
+
+
+def provider_diagnostics_snapshot() -> Dict[str, str]:
+    diagnostics = _active_provider_diagnostics.get()
+    return dict(diagnostics or {})
+
+
+def _submit_with_context(executor, function, *args):
+    context = contextvars.copy_context()
+    return executor.submit(context.run, function, *args)
+
+
+def _request_failure_status(exc: Exception) -> str:
+    response = getattr(exc, "response", None)
+    if response is not None and getattr(response, "status_code", None):
+        return "HTTP " + str(response.status_code)
+    if isinstance(exc, requests.Timeout):
+        return "timed out"
+    if isinstance(exc, requests.ConnectionError):
+        return "connection failed"
+    return "request failed"
 
 HTTP_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128.0.0.0 Safari/537.36"}
 PLACEHOLDER_PATTERN = re.compile(r"your[-_ ]|replace[-_ ]|placeholder|example|change[-_]?me|x{4,}|<[^>]+>", re.I)
@@ -100,13 +142,26 @@ def duckduckgo_search(query: str, limit: int = 6) -> List[Dict[str, Any]]:
             })
             if len(results) >= limit:
                 break
+        _record_provider("DuckDuckGo", "returned results" if results else "no results")
         return results
-    except requests.RequestException:
+    except requests.RequestException as exc:
+        status = _request_failure_status(exc)
+        _record_provider("DuckDuckGo", status)
+        logger.warning("DuckDuckGo search %s", status)
         return []
 
 
 def _rss_search(url: str, params: Dict[str, str], limit: int = 6, result_type: str = "Web", unwrap_bing: bool = False) -> List[Dict[str, Any]]:
     """Read a public RSS search feed and normalize its items into source records."""
+    host = (urlparse(url).hostname or "search provider").lower()
+    if "bing.com" in host:
+        provider = "Bing news" if result_type == "News" else "Bing web"
+    elif "google.com" in host or "news.google.com" in host:
+        provider = "Google News"
+    elif "gdeltproject.org" in host:
+        provider = "GDELT"
+    else:
+        provider = host
     try:
         response = requests.get(url, params=params, headers=HTTP_HEADERS, timeout=(1, 2))
         response.raise_for_status()
@@ -144,8 +199,16 @@ def _rss_search(url: str, params: Dict[str, str], limit: int = 6, result_type: s
                 except (TypeError, ValueError, OverflowError):
                     return oldest
             results.sort(key=published_at, reverse=True)
+        _record_provider(provider, "returned results" if results else "no results")
         return results
-    except (requests.RequestException, ET.ParseError, ValueError, TypeError):
+    except requests.RequestException as exc:
+        status = _request_failure_status(exc)
+        _record_provider(provider, status)
+        logger.warning("%s search %s", provider, status)
+        return []
+    except (ET.ParseError, ValueError, TypeError) as exc:
+        _record_provider(provider, "invalid response")
+        logger.warning("%s returned an invalid response (%s)", provider, type(exc).__name__)
         return []
 
 
@@ -201,8 +264,16 @@ def _wikipedia_search(query: str, limit: int = 6) -> List[Dict[str, Any]]:
                 "site": "Wikipedia",
                 "type": "Reference",
             })
+        _record_provider("Wikipedia", "returned results" if results else "no results")
         return results
-    except (requests.RequestException, ValueError, TypeError):
+    except requests.RequestException as exc:
+        status = _request_failure_status(exc)
+        _record_provider("Wikipedia", status)
+        logger.warning("Wikipedia search %s", status)
+        return []
+    except (ValueError, TypeError) as exc:
+        _record_provider("Wikipedia", "invalid response")
+        logger.warning("Wikipedia returned an invalid response (%s)", type(exc).__name__)
         return []
 
 
@@ -552,8 +623,8 @@ def web_search(query: str) -> List[Dict[str, Any]]:
     executor = ThreadPoolExecutor(max_workers=max(2, len(variants) * 2))
     searches = []
     for variant in variants:
-        searches.append(executor.submit(duckduckgo_search, variant, 4))
-        searches.append(executor.submit(_bing_web_search, variant, 4))
+        searches.append(_submit_with_context(executor, duckduckgo_search, variant, 4))
+        searches.append(_submit_with_context(executor, _bing_web_search, variant, 4))
     try:
         for search in as_completed(searches, timeout=2.8):
             try:
@@ -640,8 +711,8 @@ def news_search(query: str) -> List[Dict[str, Any]]:
     executor = ThreadPoolExecutor(max_workers=max(2, len(variants) * 2))
     searches = []
     for variant in variants:
-        searches.append(executor.submit(_google_news_search, variant, 4))
-        searches.append(executor.submit(_bing_news_search, variant, 4))
+        searches.append(_submit_with_context(executor, _google_news_search, variant, 4))
+        searches.append(_submit_with_context(executor, _bing_news_search, variant, 4))
     try:
         for search in as_completed(searches, timeout=2.8):
             try:
@@ -699,8 +770,17 @@ def news_search(query: str) -> List[Dict[str, Any]]:
                 "description": "",
             })
         if articles:
+            _record_provider("GDELT", "returned results")
             return _relevant_results(query, articles) or articles
-    except (requests.RequestException, ValueError, TypeError):
+        _record_provider("GDELT", "no results")
+    except (requests.RequestException, ValueError, TypeError) as exc:
+        if isinstance(exc, requests.RequestException):
+            status = _request_failure_status(exc)
+            _record_provider("GDELT", status)
+            logger.warning("GDELT search %s", status)
+        else:
+            _record_provider("GDELT", "invalid response")
+            logger.warning("GDELT returned an invalid response (%s)", type(exc).__name__)
         pass
 
     # A generic search fallback keeps the news panel useful when RSS and GDELT are unavailable.
@@ -847,8 +927,17 @@ def weather_info(city: str) -> Dict[str, Any]:
             pass
 
     try:
-        return _open_meteo_weather(clean_city)
-    except (requests.RequestException, ValueError, KeyError, TypeError):
+        result = _open_meteo_weather(clean_city)
+        _record_provider("Open-Meteo", "returned results" if not result.get("error") else "no results")
+        return result
+    except requests.RequestException as exc:
+        status = _request_failure_status(exc)
+        _record_provider("Open-Meteo", status)
+        logger.warning("Open-Meteo search %s", status)
+        return {"error": "Weather data is unavailable right now. Try again shortly."}
+    except (ValueError, KeyError, TypeError) as exc:
+        _record_provider("Open-Meteo", "invalid response")
+        logger.warning("Open-Meteo returned an invalid response (%s)", type(exc).__name__)
         return {"error": "Weather data is unavailable right now. Try again shortly."}
 
 
@@ -878,7 +967,10 @@ def _youtube_public_search(query: str) -> List[Dict[str, Any]]:
         )
         response.raise_for_status()
         page = response.text
-    except requests.RequestException:
+    except requests.RequestException as exc:
+        status = _request_failure_status(exc)
+        _record_provider("YouTube", status)
+        logger.warning("YouTube search %s", status)
         return []
 
     def read_text(value: Any) -> str:
@@ -922,6 +1014,7 @@ def _youtube_public_search(query: str) -> List[Dict[str, Any]]:
         elif isinstance(item, list):
             stack.extend(reversed(item))
     if videos:
+        _record_provider("YouTube", "returned results")
         return videos
 
     # Page-format fallback for responses that do not expose ytInitialData as JSON.
@@ -947,6 +1040,7 @@ def _youtube_public_search(query: str) -> List[Dict[str, Any]]:
         })
         if len(videos) >= 5:
             break
+    _record_provider("YouTube", "returned results" if videos else "no results")
     return videos
 
 
@@ -976,9 +1070,12 @@ def youtube_search(query: str) -> List[Dict[str, Any]]:
                     "thumbnail": ((snippet.get("thumbnails") or {}).get("medium") or {}).get("url"),
                 })
             if videos:
+                _record_provider("YouTube", "returned results")
                 return videos
-        except (requests.RequestException, ValueError, TypeError):
-            pass
+        except (requests.RequestException, ValueError, TypeError) as exc:
+            status = _request_failure_status(exc) if isinstance(exc, requests.RequestException) else "invalid response"
+            _record_provider("YouTube API", status)
+            logger.warning("YouTube API search %s", status)
 
     direct_videos = _youtube_public_search(query)
     if direct_videos:
@@ -987,7 +1084,7 @@ def youtube_search(query: str) -> List[Dict[str, Any]]:
     # Keep a public-index fallback, but cap its wait so video enrichment does not
     # hold the main research response open when an external search is slow.
     fallback_executor = ThreadPoolExecutor(max_workers=1)
-    fallback_search = fallback_executor.submit(duckduckgo_search, query + " YouTube video", 10)
+    fallback_search = _submit_with_context(fallback_executor, duckduckgo_search, query + " YouTube video", 10)
     try:
         results = fallback_search.result(timeout=0.9)
     except Exception:

@@ -129,6 +129,9 @@ function RetrievalCoverage({ retrieval }) {
     "AI synthesis pending": "Writing the brief",
     "AI synthesis": "Source-backed synthesis",
     "source-based response": "Source excerpts shown",
+    "reasoning timeout": "AI timed out, excerpts shown",
+    "no sources": "No written sources returned",
+    "timed out": "Provider timed out",
   }[value] || value || "Status unavailable");
   return (
     <section className="panel result-section" aria-labelledby="coverage-heading">
@@ -140,6 +143,12 @@ function RetrievalCoverage({ retrieval }) {
           <div key={label}><span>{label}</span><strong>{describe(value)}</strong></div>
         ))}
       </div>
+      {Object.keys(retrieval.providers || {}).length > 0 && (
+        <div className="provider-diagnostics" aria-label="Provider connection results">
+          <span>Provider checks</span>
+          {Object.entries(retrieval.providers).map(([name, status]) => <span key={name}><strong>{name}</strong> {status}</span>)}
+        </div>
+      )}
     </section>
   );
 }
@@ -418,7 +427,8 @@ export default function Dashboard() {
                   <p className="answer-query">{results.query || query}</p>
                   <div className="answer-copy">{results.answer || "The analysis returned without a text response."}</div>
                   {dashboard.retrieval?.reasoning === "AI synthesis pending" && <p className="answer-status-note">Sources are ready. Finishing the brief from their retrieved excerpts.</p>}
-                  {dashboard.retrieval?.reasoning === "source-based response" && <p className="answer-status-note">The reasoning provider did not finish in time. This brief uses the retrieved source excerpts directly.</p>}
+                  {dashboard.retrieval?.reasoning === "reasoning timeout" && <p className="answer-status-note">The reasoning provider did not finish in time. This brief uses the retrieved source excerpts directly.</p>}
+                  {dashboard.retrieval?.reasoning === "no sources" && <p className="answer-status-note">No written sources came back, so this request could not produce a verified current brief. Check the provider statuses below.</p>}
                 </section>
 
                 <RetrievalCoverage retrieval={dashboard.retrieval} />

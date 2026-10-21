@@ -38,7 +38,7 @@ Run vercel dev -L from the repository root to exercise the service routing local
 - Searches the full question and related topic terms, then ranks retrieved pages against the complete request.
 - Returns related YouTube videos when the public video provider has results.
 - Adds current news or weather data when relevant.
-- Displays retrieved results as soon as the bounded search pass completes. When a reasoning provider is configured, the brief updates automatically as soon as its grounded answer is ready.
+- Builds the answer from retrieved evidence in the same API request, so serverless requests do not depend on an in-memory background task. If the reasoning provider times out, the app returns source excerpts and marks the timeout separately from a search failure.
 - If reasoning is unavailable, the source-based brief, links, and excerpts remain available.
 - Reviews public GitHub repositories using their metadata and a small set of text files. Repository code is never executed.
 - Supports voice input through the configured speech provider or a locally installed Whisper model.
@@ -77,7 +77,7 @@ flowchart LR
 
 Set `LLM_PROVIDER` and the matching key in `backend/.env` for OpenRouter, Groq, OpenAI, or a local Ollama instance. Without a configured reasoning provider, AURALYTIX still returns retrieved sources and a source-based response. Optional paid search integrations remain off unless `ENABLE_PAID_APIS=true`; public fallbacks are used by default.
 
-Search questions are sent to the providers needed to retrieve results. Follow-up context is stored in the local SQLite database for up to 24 hours. Review the provider settings and retention behavior before using this project with sensitive queries.
+Search questions are sent to the providers needed to retrieve results. Request diagnostics distinguish provider connection failures and timeouts from a successful search with no matches. Follow-up context is stored in the local SQLite database for up to 24 hours. Review the provider settings and retention behavior before using this project with sensitive queries.
 
 ## Public launch requirements
 

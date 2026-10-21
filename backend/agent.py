@@ -10,11 +10,17 @@ from urllib.parse import quote_plus, urlparse
 try:
     from .llm import synthesize_answer
     from .storage import append_exchange, get_history, replace_last_exchange_answer
-    from .tools import github_repo_analysis, github_repo_target, news_search, weather_info, web_search, youtube_search
+    from .tools import (
+        github_repo_analysis, github_repo_target, news_search, provider_diagnostics_snapshot,
+        reset_provider_diagnostics, set_provider_diagnostics, weather_info, web_search, youtube_search,
+    )
 except ImportError:
     from llm import synthesize_answer
     from storage import append_exchange, get_history, replace_last_exchange_answer
-    from tools import github_repo_analysis, github_repo_target, news_search, weather_info, web_search, youtube_search
+    from tools import (
+        github_repo_analysis, github_repo_target, news_search, provider_diagnostics_snapshot,
+        reset_provider_diagnostics, set_provider_diagnostics, weather_info, web_search, youtube_search,
+    )
 
 
 def _is_weather_query(query: str) -> bool:
@@ -75,14 +81,20 @@ def _fallback_answer(query: str, sources: List[Dict[str, Any]], weather: Optiona
         if weather.get("wind_speed") is not None:
             details.append(f"Wind speed is {weather['wind_speed']} m/s.")
         return "".join(details).strip()
-    if not sources:
-        return "I could not retrieve current sources for this question. Check the backend's internet connection or search provider, then try again."
+    written_sources = [source for source in sources if source.get("type") != "Video"]
+    if not written_sources:
+        return (
+            "I could not verify this question from current written sources. The search providers returned "
+            "no usable pages for this request, so I will not guess at current events or present video titles "
+            "as evidence. Check the Search coverage panel for provider timeouts, then try again with a more "
+            "specific phrase or open the related YouTube results below."
+        )
 
     lines = [
         "I could not finish an AI-written synthesis, so this brief summarizes the retrieved evidence for: " + query,
         "\nWhat the sources say",
     ]
-    for source in sources[:6]:
+    for source in written_sources[:6]:
         excerpt = (source.get("description") or "").strip()
         site = source.get("site") or ""
         line = f"{source.get('reference')}: {source.get('title') or 'Untitled result'}"
@@ -168,12 +180,18 @@ class AuralytixAgent:
         jobs.append(asyncio.to_thread(youtube_search, query))
         job_names.append("videos")
 
-        job_tasks = [asyncio.create_task(job) for job in jobs]
-        _, pending = await asyncio.wait(job_tasks, timeout=4.5) if job_tasks else (set(), set())
-        for task in pending:
-            task.cancel()
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
+        request_provider_status: Dict[str, str] = {}
+        diagnostics_token = set_provider_diagnostics(request_provider_status)
+        try:
+            job_tasks = [asyncio.create_task(job) for job in jobs]
+            _, pending = await asyncio.wait(job_tasks, timeout=4.5) if job_tasks else (set(), set())
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            provider_statuses = provider_diagnostics_snapshot()
+        finally:
+            reset_provider_diagnostics(diagnostics_token)
 
         retrieval_deadline_hit = bool(pending)
         retrieved: Dict[str, Any] = {}
@@ -248,9 +266,9 @@ class AuralytixAgent:
             if web_results:
                 answer += " I found related pages below, but they do not confirm current conditions."
             reasoning_state = "specialist data unavailable"
-        elif not sources or not any(source.get("type") != "Video" for source in sources):
+        elif not any(source.get("type") != "Video" for source in sources):
             answer = _fallback_answer(query, sources, weather)
-            reasoning_state = "source-based response"
+            reasoning_state = "no sources"
         elif defer_synthesis:
             answer = _fallback_answer(query, sources, weather)
             reasoning_state = "AI synthesis pending"
@@ -259,12 +277,12 @@ class AuralytixAgent:
         else:
             synthesis_task = asyncio.create_task(asyncio.to_thread(synthesize_answer, query, sources, history))
             try:
-                answer = await asyncio.wait_for(synthesis_task, timeout=14.0)
+                answer = await asyncio.wait_for(synthesis_task, timeout=10.0)
             except asyncio.TimeoutError:
                 answer = None
             if not answer:
                 answer = _fallback_answer(query, sources, weather)
-                reasoning_state = "source-based response"
+                reasoning_state = "reasoning timeout"
             else:
                 reasoning_state = "AI synthesis"
         await asyncio.to_thread(append_exchange, session_id, query, answer)
@@ -308,12 +326,37 @@ class AuralytixAgent:
             if weather.get("chart"):
                 dashboard_data["chart"] = weather["chart"]
 
+        def retrieval_status(name: str, items: Any, requested: bool, providers: List[str]) -> str:
+            if not requested:
+                return "not requested"
+            if retrieved.get(name) is None:
+                return "timed out" if retrieval_deadline_hit else "unavailable"
+            if items:
+                return "available"
+            attempted = [provider_statuses[key] for key in providers if key in provider_statuses]
+            if attempted and all(
+                status not in {"returned results", "no results"}
+                for status in attempted
+            ):
+                return "unavailable"
+            return "no results"
+
         dashboard_data["retrieval"] = {
             "deadline_reached": retrieval_deadline_hit,
-            "web": "available" if web_results else ("not requested" if repository_query else "no results"),
-            "news": "available" if articles else ("not requested" if not news_query else "no results"),
-            "weather": "available" if weather and not weather.get("error") else ("not requested" if not weather_query else "unavailable"),
-            "videos": "available" if videos else "search link available",
+            "web": retrieval_status("web", web_results, not repository_query, ["DuckDuckGo", "Bing web", "Wikipedia"]),
+            "news": retrieval_status("news", articles, news_query, ["Google News", "Bing news", "GDELT", "DuckDuckGo"]),
+            "weather": (
+                "not requested" if not weather_query
+                else "timed out" if retrieved.get("weather") is None and retrieval_deadline_hit
+                else "unavailable" if not weather or weather.get("error")
+                else "available"
+            ),
+            "videos": "available" if videos else (
+                "timed out" if retrieved.get("videos") is None and retrieval_deadline_hit
+                else "unavailable" if provider_statuses.get("YouTube") in {"connection failed", "timed out", "request failed"}
+                else "search link available"
+            ),
+            "providers": provider_statuses,
             "repository": (
                 "available" if repository_query and repository and repository.get("files_analyzed")
                 else "metadata only" if repository_query and repository and repository.get("url")

@@ -4,16 +4,12 @@
     "app": {
       "root": ".",
       "framework": "fastapi",
-      "entrypoint": "backend.main:app"
+      "entrypoint": "backend.main:app",
+      "maxDuration": 30
     },
     "frontend": {
       "root": "frontend",
       "framework": "vite"
-    }
-  },
-  "git": {
-    "deploymentEnabled": {
-      "vercel-services-config": false
     }
   },
   "rewrites": [

@@ -141,7 +141,7 @@ def synthesize_answer(
             response = requests.post(
                 settings["url"],
                 json={"model": settings["model"], "messages": messages, "stream": False, "options": {"temperature": 0.2}},
-                timeout=(3, 12),
+                timeout=(2, 9),
             )
             response.raise_for_status()
             content = (response.json().get("message") or {}).get("content")
@@ -161,7 +161,7 @@ def synthesize_answer(
                     "reasoning": {"effort": "low"},
                     "store": False,
                 },
-                timeout=(3, 12),
+                timeout=(2, 9),
             )
             response.raise_for_status()
             content = _responses_api_text(response.json())
@@ -181,7 +181,7 @@ def synthesize_answer(
                 settings["url"],
                 headers=headers,
                 json=payload,
-                timeout=(3, 12),
+                timeout=(2, 9),
             )
             response.raise_for_status()
             content = (((response.json().get("choices") or [{}])[0].get("message") or {}).get("content"))

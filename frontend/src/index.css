@@ -144,6 +144,9 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
 .coverage-grid > div { display: grid; gap: 5px; padding: 12px; border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
 .coverage-grid span { color: var(--quiet); font-size: 10px; }
 .coverage-grid strong { color: var(--text); font-size: 11px; font-weight: 550; }
+.provider-diagnostics { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; color: var(--quiet); font-size: 11px; }
+.provider-diagnostics > span:first-child { color: var(--text); font-weight: 600; }
+.provider-diagnostics strong { color: var(--text); font-weight: 550; }
 .weather-location { margin: -3px 0 0; font-size: 22px; font-weight: 550; }
 .weather-condition { margin: 3px 0 15px; color: var(--muted); text-transform: capitalize; }
 .weather-values { display: flex; flex-wrap: wrap; gap: 0; margin: 16px 0 19px; border: 1px solid var(--line-soft); }
