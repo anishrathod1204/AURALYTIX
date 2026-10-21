@@ -111,6 +111,13 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
 .recording-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
 .voice-note { margin: 0; color: var(--quiet); font-size: 11px; }
 .voice-transcript { margin: 0; color: var(--text); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.voice-device-picker { display: grid; gap: 5px; color: var(--quiet); font-size: 11px; }
+.voice-device-picker select { width: 100%; border: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--text); padding: 9px 10px; font: inherit; }
+.voice-input-meter { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--quiet); font-size: 11px; }
+.voice-meter-track { height: 5px; overflow: hidden; background: var(--line-soft); }
+.voice-meter-track > span { display: block; height: 100%; background: var(--accent); }
+.voice-control.is-compact .voice-input-meter,
+.voice-control.is-compact .voice-device-picker { grid-column: 1 / -1; }
 .voice-control.is-compact .voice-note,
 .voice-control.is-compact .voice-transcript,
 .voice-control.is-compact .voice-error { grid-column: 1 / -1; }
