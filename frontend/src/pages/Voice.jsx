@@ -20,7 +20,7 @@ export default function Voice() {
         <Link className="back-link" to="/"><ArrowLeft aria-hidden="true" size={15} /> Research desk</Link>
         <div className="eyebrow"><span className="eyebrow-line" />AURALYTIX / VOICE INPUT</div>
         <h1>Ask by speaking.</h1>
-        <p className="policy-intro">Start recording only when you are ready. The backend transcribes the clip when its speech service is available. After a transcription error, supported browsers can offer their own speech service, which may process microphone audio with the browser vendor.</p>
+        <p className="policy-intro">On supported browsers, voice input uses browser speech recognition first. The browser vendor may process microphone audio. If browser speech is unavailable, you can use the server transcription option.</p>
         <section className="panel voice-page-panel">
           <div className="section-heading">
             <div><span className="section-kicker">Voice query</span><h2>Microphone input</h2></div>

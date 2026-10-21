@@ -252,9 +252,17 @@ def remove_temporary_file(path: Optional[str]) -> None:
 def validate_transcription(text: str) -> str:
     if not text or text.startswith("Transcription error:") or text.startswith("faster-whisper is not installed"):
         raise HTTPException(status_code=503, detail="Speech recognition is unavailable. Check the API key or local Whisper setup.")
-    if text == "[No speech detected]":
+    clean_text = text.strip()
+    if clean_text == "[No speech detected]":
         raise HTTPException(status_code=422, detail="No speech was detected. Try recording again.")
-    return text.strip()
+    normalized = re.sub(r"[^a-z0-9\s]", " ", clean_text.casefold())
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    if normalized in {"you", "uh", "um", "umm", "hmm", "hm"}:
+        raise HTTPException(
+            status_code=422,
+            detail="Only a short fragment was recognized. Try again and speak a complete question.",
+        )
+    return clean_text
 
 
 async def transcribe_upload(request: Request) -> tuple[str, Optional[str]]:

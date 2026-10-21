@@ -32,8 +32,15 @@ def _openai_transcription(audio_path: str, api_key: str) -> str:
 def _local_transcription(audio_path: str) -> Optional[str]:
     try:
         model = _local_whisper_model()
-        segments, _ = model.transcribe(audio_path, beam_size=5)
-        return " ".join(segment.text for segment in segments).strip() or "[No speech detected]"
+        segments, _ = model.transcribe(
+            audio_path,
+            beam_size=1,
+            condition_on_previous_text=False,
+            vad_filter=True,
+            vad_parameters={"min_silence_duration_ms": 500, "speech_pad_ms": 200},
+        )
+        transcript = " ".join(segment.text.strip() for segment in segments if segment.text.strip())
+        return transcript.strip() or "[No speech detected]"
     except Exception:
         return None
 

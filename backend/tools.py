@@ -4,7 +4,7 @@ import json
 import importlib.util
 import os
 import re
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
 from datetime import datetime, timezone
 from html import unescape
 from email.utils import parsedate_to_datetime
@@ -79,7 +79,7 @@ def duckduckgo_search(query: str, limit: int = 6) -> List[Dict[str, Any]]:
             "https://html.duckduckgo.com/html/",
             params={"q": query},
             headers=HTTP_HEADERS,
-            timeout=(2, 4),
+            timeout=(1, 2),
         )
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
@@ -108,7 +108,7 @@ def duckduckgo_search(query: str, limit: int = 6) -> List[Dict[str, Any]]:
 def _rss_search(url: str, params: Dict[str, str], limit: int = 6, result_type: str = "Web", unwrap_bing: bool = False) -> List[Dict[str, Any]]:
     """Read a public RSS search feed and normalize its items into source records."""
     try:
-        response = requests.get(url, params=params, headers=HTTP_HEADERS, timeout=(2, 4))
+        response = requests.get(url, params=params, headers=HTTP_HEADERS, timeout=(1, 2))
         response.raise_for_status()
         root = ET.fromstring(response.content)
         results: List[Dict[str, Any]] = []
@@ -185,7 +185,7 @@ def _wikipedia_search(query: str, limit: int = 6) -> List[Dict[str, Any]]:
             "https://en.wikipedia.org/w/api.php",
             params={"action": "query", "list": "search", "srsearch": query, "format": "json", "utf8": "1", "srlimit": limit},
             headers=HTTP_HEADERS,
-            timeout=(2, 4),
+            timeout=(1, 2),
         )
         response.raise_for_status()
         pages = response.json().get("query", {}).get("search", [])
@@ -525,7 +525,7 @@ def web_search(query: str) -> List[Dict[str, Any]]:
                 "https://google.serper.dev/search",
                 headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
                 json={"q": query, "num": 6},
-                timeout=(2, 4),
+                timeout=(1, 2),
             )
             response.raise_for_status()
             data = response.json()
@@ -549,16 +549,23 @@ def web_search(query: str) -> List[Dict[str, Any]]:
     # indexes. Parallel calls keep the extra coverage from adding serial latency.
     results = []
     variants = _search_query_variants(query)[:3]
-    with ThreadPoolExecutor(max_workers=max(2, len(variants) * 2)) as executor:
-        searches = []
-        for variant in variants:
-            searches.append(executor.submit(duckduckgo_search, variant, 4))
-            searches.append(executor.submit(_bing_web_search, variant, 4))
-        for search in searches:
+    executor = ThreadPoolExecutor(max_workers=max(2, len(variants) * 2))
+    searches = []
+    for variant in variants:
+        searches.append(executor.submit(duckduckgo_search, variant, 4))
+        searches.append(executor.submit(_bing_web_search, variant, 4))
+    try:
+        for search in as_completed(searches, timeout=2.8):
             try:
                 results.extend(search.result())
             except Exception:
                 continue
+            if len(results) >= 8:
+                break
+    except FuturesTimeoutError:
+        pass
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
 
     unique_results = []
     seen_urls = set()
@@ -630,16 +637,23 @@ def news_search(query: str) -> List[Dict[str, Any]]:
     if re.search(r"\b(?:this week|today|latest|recent|breaking|what changed|current events)\b", query, re.I):
         variants = [variant + " when:7d" for variant in variants]
     rss_articles = []
-    with ThreadPoolExecutor(max_workers=max(2, len(variants) * 2)) as executor:
-        searches = []
-        for variant in variants:
-            searches.append(executor.submit(_google_news_search, variant, 4))
-            searches.append(executor.submit(_bing_news_search, variant, 4))
-        for search in searches:
+    executor = ThreadPoolExecutor(max_workers=max(2, len(variants) * 2))
+    searches = []
+    for variant in variants:
+        searches.append(executor.submit(_google_news_search, variant, 4))
+        searches.append(executor.submit(_bing_news_search, variant, 4))
+    try:
+        for search in as_completed(searches, timeout=2.8):
             try:
                 rss_articles.extend(search.result())
             except Exception:
                 continue
+            if len(rss_articles) >= 8:
+                break
+    except FuturesTimeoutError:
+        pass
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
     unique_articles = []
     seen_article_urls = set()
     for article in rss_articles:
@@ -665,7 +679,7 @@ def news_search(query: str) -> List[Dict[str, Any]]:
             "https://api.gdeltproject.org/api/v2/doc/doc",
             params={"query": topic_query, "mode": "artlist", "format": "json", "maxrecords": 6, "sort": "datedesc"},
             headers=HTTP_HEADERS,
-            timeout=(2, 4),
+            timeout=(1, 2),
         )
         response.raise_for_status()
         data = response.json()

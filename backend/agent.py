@@ -131,7 +131,7 @@ class AuralytixAgent:
         repository_query = repository_target is not None
         weather_query = _is_weather_query(query) and not repository_query
         news_query = _is_news_query(query) and not repository_query
-        video_query = True
+        video_query = _is_video_query(query)
 
         jobs = []
         job_names = []
@@ -152,7 +152,7 @@ class AuralytixAgent:
             job_names.append("videos")
 
         job_tasks = [asyncio.create_task(job) for job in jobs]
-        _, pending = await asyncio.wait(job_tasks, timeout=6.5) if job_tasks else (set(), set())
+        _, pending = await asyncio.wait(job_tasks, timeout=4.5) if job_tasks else (set(), set())
         for task in pending:
             task.cancel()
         if pending:

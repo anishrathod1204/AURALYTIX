@@ -110,6 +110,10 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
 .voice-control.is-compact .secondary-button { width: auto; white-space: nowrap; }
 .recording-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
 .voice-note { margin: 0; color: var(--quiet); font-size: 11px; }
+.voice-transcript { margin: 0; color: var(--text); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.voice-control.is-compact .voice-note,
+.voice-control.is-compact .voice-transcript,
+.voice-control.is-compact .voice-error { grid-column: 1 / -1; }
 .inline-error { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 11px 12px; color: #f0b5a2; border: 1px solid #68453b; background: #261914; font-size: 12px; }
 .inline-error svg { flex: 0 0 auto; margin-top: 1px; }
 .voice-error { margin-top: 0; }
