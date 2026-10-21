@@ -107,6 +107,43 @@ function SourceList({ sources }) {
   );
 }
 
+function RetrievalCoverage({ retrieval }) {
+  if (!retrieval) return null;
+  const entries = [
+    ["Web search", retrieval.web],
+    ["News", retrieval.news],
+    ["Weather", retrieval.weather],
+    ["YouTube", retrieval.videos],
+    ["GitHub", retrieval.repository],
+    ["Answer", retrieval.reasoning],
+  ];
+  const describe = (value) => ({
+    available: "Results returned",
+    "search link available": "Search link ready",
+    "not requested": "Not needed for this question",
+    "no results": "No results returned",
+    unavailable: "Provider unavailable",
+    "metadata only": "Metadata returned",
+    "repository unavailable": "Repository unavailable",
+    "specialist data unavailable": "Provider unavailable",
+    "AI synthesis pending": "Writing the brief",
+    "AI synthesis": "Source-backed synthesis",
+    "source-based response": "Source excerpts shown",
+  }[value] || value || "Status unavailable");
+  return (
+    <section className="panel result-section" aria-labelledby="coverage-heading">
+      <div className="section-heading">
+        <div><span className="section-kicker">Request diagnostics</span><h2 id="coverage-heading">Search coverage</h2></div>
+      </div>
+      <div className="coverage-grid">
+        {entries.map(([label, value]) => (
+          <div key={label}><span>{label}</span><strong>{describe(value)}</strong></div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function RepositorySummary({ repository }) {
   if (!repository) return null;
   return (
@@ -260,6 +297,7 @@ export default function Dashboard() {
   const videos = Array.isArray(dashboard.videos) ? dashboard.videos : [];
   const weather = dashboard.weather || null;
   const mapCenter = Array.isArray(dashboard.map_center) && dashboard.map_center.length === 2 ? dashboard.map_center : null;
+  const videoSearchUrl = dashboard.video_search_url || "https://www.youtube.com/results?search_query=" + encodeURIComponent(results?.query || query);
 
   return (
     <div className="site-shell">
@@ -355,7 +393,7 @@ export default function Dashboard() {
                 </div>
                 <AudioLines aria-hidden="true" size={19} />
               </div>
-              <p className="panel-note">Record up to 10 seconds. The backend transcribes the clip, then searches the same sources as text input.</p>
+              <p className="panel-note">Record up to 30 seconds, review the transcript, then search the same sources as text input.</p>
               <VoiceInput onResult={handleVoiceResult} compact />
             </section>
           </aside>
@@ -383,6 +421,7 @@ export default function Dashboard() {
                   {dashboard.retrieval?.reasoning === "source-based response" && <p className="answer-status-note">The reasoning provider did not finish in time. This brief uses the retrieved source excerpts directly.</p>}
                 </section>
 
+                <RetrievalCoverage retrieval={dashboard.retrieval} />
                 <RepositorySummary repository={dashboard.repository} />
                 {weather && <WeatherSummary weather={weather} mapCenter={mapCenter} />}
                 {dashboard.chart && <Suspense fallback={<div className="visualization-loading">Loading forecast chart</div>}><ChartView title={dashboard.chart.title || "Returned data"} data={dashboard.chart} /></Suspense>}
@@ -396,18 +435,26 @@ export default function Dashboard() {
                   </section>
                 )}
 
-                {videos.length > 0 && (
-                  <section className="panel result-section" aria-labelledby="videos-heading">
-                    <div className="section-heading">
-                      <div><span className="section-kicker">Retrieved data</span><h2 id="videos-heading">Related videos</h2></div>
-                    </div>
+                <section className="panel result-section" aria-labelledby="videos-heading">
+                  <div className="section-heading">
+                    <div><span className="section-kicker">Video coverage</span><h2 id="videos-heading">Related videos</h2></div>
+                    <span className="section-count">{videos.length ? `${videos.length} found` : "Search ready"}</span>
+                  </div>
+                  {videos.length > 0 ? (
                     <div className="video-grid">{videos.map((video, index) => <VideoEmbed key={video.video_id || index} video={video} />)}</div>
-                  </section>
-                )}
+                  ) : (
+                    <div className="video-search-fallback">
+                      <p>Individual video links were not returned this time. Open YouTube results for the full question.</p>
+                      <a className="text-link" href={safeExternalUrl(videoSearchUrl)} target="_blank" rel="noopener noreferrer">
+                        Search YouTube for this question <ArrowUpRight aria-hidden="true" size={14} />
+                      </a>
+                    </div>
+                  )}
+                </section>
 
                 <SourceList sources={sources} />
-                {sources.length === 0 && !weather && articles.length === 0 && videos.length === 0 && (
-                  <div className="source-note"><CircleAlert aria-hidden="true" size={16} />No structured sources were returned for this request. Check which providers are configured above.</div>
+                {sources.length === 0 && !weather && articles.length === 0 && (
+                  <div className="source-note"><CircleAlert aria-hidden="true" size={16} />No web sources were returned for this request. The search coverage above shows which providers responded.</div>
                 )}
               </div>
             ) : (

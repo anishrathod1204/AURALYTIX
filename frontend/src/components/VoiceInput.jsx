@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CircleAlert, LoaderCircle, Mic2, MicOff, Square } from "lucide-react";
-import { getSessionId, postQuery, postVoiceQuery } from "../services/api";
+import { getSessionId, postQuery, postTranscribe } from "../services/api";
 
 const LOW_SIGNAL_TRANSCRIPTS = new Set(["you", "uh", "um", "umm", "hmm", "hm"]);
 
@@ -140,6 +140,21 @@ export default function VoiceInput({ onResult, compact = false }) {
     };
   }, [refreshMicrophones, releaseMicrophone]);
 
+  const reviewTranscript = (rawTranscript) => {
+    const value = cleanTranscript(rawTranscript);
+    setTranscript(value);
+    setRecording(false);
+    setProcessing(false);
+    setServerFallbackAvailable(false);
+    if (isLowSignalTranscript(value)) {
+      setStatus("Review the words or record again");
+      setError("Only a short fragment was heard. Edit the words below or record a complete question.");
+      return;
+    }
+    setStatus("Transcript ready to review");
+    setError("");
+  };
+
   const submitTranscript = async (rawTranscript) => {
     const value = cleanTranscript(rawTranscript);
     setTranscript(value);
@@ -148,7 +163,7 @@ export default function VoiceInput({ onResult, compact = false }) {
       setProcessing(false);
       setStatus("No clear question was recognized");
       setServerFallbackAvailable(browserSpeechAvailable);
-      setError("Only a short fragment was heard, so nothing was searched. Try again and speak a complete question.");
+      setError("Only a short fragment was heard. Edit the words below or record a complete question.");
       return;
     }
 
@@ -207,7 +222,7 @@ export default function VoiceInput({ onResult, compact = false }) {
         window.clearTimeout(timeoutRef.current);
         if (recognitionRef.current === recognition) recognitionRef.current = null;
         releaseMicrophone();
-        void submitTranscript(recognized);
+        reviewTranscript(recognized);
       };
       recognition.onerror = (event) => {
         failed = true;
@@ -349,16 +364,13 @@ export default function VoiceInput({ onResult, compact = false }) {
           return;
         }
         setProcessing(true);
-        setStatus("Transcribing and analyzing");
+        setStatus("Transcribing your recording");
         const extension = blob.type.includes("mp4") ? "mp4" : blob.type.includes("ogg") ? "ogg" : "webm";
         const audio = new File([blob], "voice-query." + extension, { type: blob.type });
         try {
-          const result = await postVoiceQuery(audio, getSessionId());
+          const result = await postTranscribe(audio);
           if (mountedRef.current) {
-            setProcessing(false);
-            setStatus("Analysis complete");
-            setTranscript(result.transcript || "");
-            onResult?.(result);
+            reviewTranscript(result.text || "");
           }
         } catch (requestError) {
           if (mountedRef.current) {
@@ -462,9 +474,26 @@ export default function VoiceInput({ onResult, compact = false }) {
         </div>
       )}
       {transcript && (
-        <p className="voice-transcript" aria-live="polite">
-          <strong>Heard:</strong> {transcript}
-        </p>
+        <div className="voice-transcript-editor">
+          <label htmlFor="voice-transcript">Review the words before searching</label>
+          <textarea
+            id="voice-transcript"
+            value={transcript}
+            onChange={(event) => setTranscript(event.target.value)}
+            rows={3}
+            maxLength={2000}
+            disabled={processing}
+          />
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => submitTranscript(transcript)}
+            disabled={processing || !transcript.trim()}
+          >
+            {processing ? <LoaderCircle className="spinning-icon" aria-hidden="true" size={16} /> : <Mic2 aria-hidden="true" size={16} />}
+            {processing ? "Searching question" : "Search this question"}
+          </button>
+        </div>
       )}
       {error && browserSpeechAvailable && serverFallbackAvailable && !recording && !processing && (
         <button className="secondary-button" type="button" onClick={startServerRecording}>

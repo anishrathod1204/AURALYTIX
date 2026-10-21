@@ -5,7 +5,7 @@ import re
 import time
 import uuid
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse
+from urllib.parse import quote_plus, urlparse
 
 try:
     from .llm import synthesize_answer
@@ -44,6 +44,21 @@ def _weather_city(query: str) -> str:
     return city[:100]
 
 
+def _weather_evidence(weather: Dict[str, Any]) -> str:
+    details = []
+    if weather.get("temperature") is not None:
+        details.append(f"Temperature: {weather['temperature']}°C")
+    if weather.get("condition"):
+        details.append("Condition: " + str(weather["condition"]))
+    if weather.get("humidity") is not None:
+        details.append(f"Humidity: {weather['humidity']}%")
+    if weather.get("wind_speed") is not None:
+        details.append(f"Wind speed: {weather['wind_speed']} m/s")
+    if weather.get("observed_at"):
+        details.append("Observed at: " + str(weather["observed_at"]))
+    return "; ".join(details) or "Weather provider returned current conditions."
+
+
 def _add_source(sources: List[Dict[str, Any]], seen: set, source: Dict[str, Any]) -> None:
     url = source.get("url")
     if url and url not in seen:
@@ -63,17 +78,22 @@ def _fallback_answer(query: str, sources: List[Dict[str, Any]], weather: Optiona
     if not sources:
         return "I could not retrieve current sources for this question. Check the backend's internet connection or search provider, then try again."
 
-    lines = ["Here are the strongest results I could retrieve for your question:"]
-    for source in sources[:5]:
+    lines = [
+        "I could not finish an AI-written synthesis, so this brief summarizes the retrieved evidence for: " + query,
+        "\nWhat the sources say",
+    ]
+    for source in sources[:6]:
         excerpt = (source.get("description") or "").strip()
         site = source.get("site") or ""
-        line = f"• {source.get('title') or 'Untitled result'} [{source.get('reference')}]"
+        line = f"{source.get('reference')}: {source.get('title') or 'Untitled result'}"
         if site:
             line += f" ({site})"
         if excerpt:
-            line += f"\n  {excerpt}"
+            line += f"\n{excerpt}"
         lines.append(line)
-    lines.append("Open the source links below to review the original material.")
+    lines.append(
+        "\nLimits: These excerpts are leads, not a complete account. Compare the linked pages and their dates before drawing a conclusion."
+    )
     return "\n\n".join(lines)
 
 
@@ -131,8 +151,6 @@ class AuralytixAgent:
         repository_query = repository_target is not None
         weather_query = _is_weather_query(query) and not repository_query
         news_query = _is_news_query(query) and not repository_query
-        video_query = _is_video_query(query)
-
         jobs = []
         job_names = []
         if repository_query:
@@ -147,9 +165,8 @@ class AuralytixAgent:
         if news_query:
             jobs.append(asyncio.to_thread(news_search, query))
             job_names.append("news")
-        if video_query:
-            jobs.append(asyncio.to_thread(youtube_search, query))
-            job_names.append("videos")
+        jobs.append(asyncio.to_thread(youtube_search, query))
+        job_names.append("videos")
 
         job_tasks = [asyncio.create_task(job) for job in jobs]
         _, pending = await asyncio.wait(job_tasks, timeout=4.5) if job_tasks else (set(), set())
@@ -216,7 +233,7 @@ class AuralytixAgent:
                 "title": "Current conditions for " + str(weather.get("city") or "requested location"),
                 "url": "https://open-meteo.com/en/docs" if weather.get("provider") == "Open-Meteo" else "https://openweathermap.org/current",
                 "site": weather.get("provider") or "Weather provider",
-                "description": "Observed at " + str(weather.get("observed_at") or "the latest provider update"),
+                "description": _weather_evidence(weather),
             })
 
         history = await asyncio.to_thread(get_history, session_id, 10)
@@ -277,8 +294,8 @@ class AuralytixAgent:
             }
         if articles:
             dashboard_data["articles"] = articles
-        if videos:
-            dashboard_data["videos"] = videos
+        dashboard_data["videos"] = videos
+        dashboard_data["video_search_url"] = "https://www.youtube.com/results?search_query=" + quote_plus(query)
         if weather and not weather.get("error"):
             dashboard_data["weather"] = weather
             latitude = weather.get("lat")
@@ -296,7 +313,7 @@ class AuralytixAgent:
             "web": "available" if web_results else ("not requested" if repository_query else "no results"),
             "news": "available" if articles else ("not requested" if not news_query else "no results"),
             "weather": "available" if weather and not weather.get("error") else ("not requested" if not weather_query else "unavailable"),
-            "videos": "available" if videos else ("not requested" if not video_query else "no results"),
+            "videos": "available" if videos else "search link available",
             "repository": (
                 "available" if repository_query and repository and repository.get("files_analyzed")
                 else "metadata only" if repository_query and repository and repository.get("url")

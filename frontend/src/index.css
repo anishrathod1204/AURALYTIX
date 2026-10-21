@@ -110,7 +110,10 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
 .voice-control.is-compact .secondary-button { width: auto; white-space: nowrap; }
 .recording-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
 .voice-note { margin: 0; color: var(--quiet); font-size: 11px; }
-.voice-transcript { margin: 0; color: var(--text); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.voice-transcript-editor { display: grid; gap: 8px; }
+.voice-transcript-editor label { color: var(--quiet); font-size: 11px; }
+.voice-transcript-editor textarea { width: 100%; min-height: 74px; resize: vertical; padding: 10px 11px; border: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; line-height: 1.5; }
+.voice-control.is-compact .voice-transcript-editor .secondary-button { width: 100%; }
 .voice-device-picker { display: grid; gap: 5px; color: var(--quiet); font-size: 11px; }
 .voice-device-picker select { width: 100%; border: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--text); padding: 9px 10px; font: inherit; }
 .voice-input-meter { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--quiet); font-size: 11px; }
@@ -119,7 +122,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
 .voice-control.is-compact .voice-input-meter,
 .voice-control.is-compact .voice-device-picker { grid-column: 1 / -1; }
 .voice-control.is-compact .voice-note,
-.voice-control.is-compact .voice-transcript,
+.voice-control.is-compact .voice-transcript-editor,
 .voice-control.is-compact .voice-error { grid-column: 1 / -1; }
 .inline-error { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 11px 12px; color: #f0b5a2; border: 1px solid #68453b; background: #261914; font-size: 12px; }
 .inline-error svg { flex: 0 0 auto; margin-top: 1px; }
@@ -137,6 +140,10 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
 .answer-copy { color: #d4ddd6; font-size: 14px; line-height: 1.78; white-space: pre-wrap; overflow-wrap: anywhere; }
 .answer-copy p { margin: 0 0 1em; }
 .result-section { padding-bottom: 23px; }
+.coverage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line-soft); }
+.coverage-grid > div { display: grid; gap: 5px; padding: 12px; border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+.coverage-grid span { color: var(--quiet); font-size: 10px; }
+.coverage-grid strong { color: var(--text); font-size: 11px; font-weight: 550; }
 .weather-location { margin: -3px 0 0; font-size: 22px; font-weight: 550; }
 .weather-condition { margin: 3px 0 15px; color: var(--muted); text-transform: capitalize; }
 .weather-values { display: flex; flex-wrap: wrap; gap: 0; margin: 16px 0 19px; border: 1px solid var(--line-soft); }
@@ -156,6 +163,8 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
 .news-source { margin-bottom: 8px; color: var(--accent-bright); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
 .news-card h3, .video-copy h3 { margin: 0 0 8px; color: var(--text); font-size: 13px; line-height: 1.45; font-weight: 600; }
 .news-card > p, .video-copy > p { margin: 0 0 13px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.video-search-fallback { display: grid; justify-items: start; gap: 10px; padding: 15px; border: 1px solid var(--line-soft); background: #fffefa; }
+.video-search-fallback p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .news-card-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; color: var(--quiet); font-size: 10px; }
 .text-link { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-bright); font-size: 11px; text-decoration: none; }
 .text-link:hover { color: #f4d4a6; text-decoration: underline; text-underline-offset: 3px; }
@@ -258,6 +267,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible {
   .provider-status { gap: 6px; padding: 8px; font-size: 10px; }
   .provider-state { font-size: 9px; }
   .voice-control.is-compact { grid-template-columns: 1fr; }
+  .coverage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .voice-control.is-compact .secondary-button { width: 100%; }
   .source-row { grid-template-columns: 1fr auto; gap: 6px 10px; }
   .source-type { grid-column: 1 / -1; }

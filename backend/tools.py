@@ -874,7 +874,7 @@ def _youtube_public_search(query: str) -> List[Dict[str, Any]]:
             "https://www.youtube.com/results",
             params={"search_query": query},
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128.0.0.0 Safari/537.36"},
-            timeout=(2, 4),
+            timeout=(0.8, 1.2),
         )
         response.raise_for_status()
         page = response.text
@@ -958,7 +958,7 @@ def youtube_search(query: str) -> List[Dict[str, Any]]:
             response = requests.get(
                 "https://www.googleapis.com/youtube/v3/search",
                 params={"part": "snippet", "q": query, "type": "video", "maxResults": 5, "key": api_key},
-                timeout=(2, 4),
+                timeout=(1, 1.5),
             )
             response.raise_for_status()
             data = response.json()
@@ -983,7 +983,18 @@ def youtube_search(query: str) -> List[Dict[str, Any]]:
     direct_videos = _youtube_public_search(query)
     if direct_videos:
         return direct_videos
-    results = duckduckgo_search(query + " YouTube video", limit=10)
+
+    # Keep a public-index fallback, but cap its wait so video enrichment does not
+    # hold the main research response open when an external search is slow.
+    fallback_executor = ThreadPoolExecutor(max_workers=1)
+    fallback_search = fallback_executor.submit(duckduckgo_search, query + " YouTube video", 10)
+    try:
+        results = fallback_search.result(timeout=0.9)
+    except Exception:
+        results = []
+    finally:
+        fallback_executor.shutdown(wait=False, cancel_futures=True)
+
     videos = []
     seen = set()
     for result in results:
